@@ -8,12 +8,32 @@ const api = axios.create({
     'Content-Type': 'application/json'
   },
   withCredentials: true,
-  timeout: 10000
+  timeout: 15000
+});
+
+// Attach JWT token from localStorage if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ev_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const data = response.data;
+    // Auto-store token from any response that includes one
+    if (data?.data?.token) {
+      localStorage.setItem('ev_token', data.data.token);
+    }
+    return data;
+  },
   (error) => {
+    // Clear token on 401
+    if (error.response?.status === 401) {
+      localStorage.removeItem('ev_token');
+    }
     const customError = {
       message: error.response?.data?.message || error.message || 'Network error occurred',
       status: error.response?.status || 500,

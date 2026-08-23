@@ -1,6 +1,14 @@
+const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
 const { validateRegistration, validateLogin } = require('../utils/validation');
+
+const JWT_SECRET = process.env.SESSION_SECRET || 'fallback-dev-secret';
+const JWT_EXPIRES = '7d';
+
+function signToken(userId) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+}
 
 class AuthController {
   async register(req, res, next) {
@@ -19,7 +27,8 @@ class AuthController {
 
       req.session.userId = result.user.id;
 
-      return successResponse(res, result.user, 'Account created successfully', 201);
+      const token = signToken(result.user.id);
+      return successResponse(res, { ...result.user, token }, 'Account created successfully', 201);
     } catch (err) {
       next(err);
     }
@@ -41,7 +50,8 @@ class AuthController {
 
       req.session.userId = result.user.id;
 
-      return successResponse(res, result.user, 'Login successful');
+      const token = signToken(result.user.id);
+      return successResponse(res, { ...result.user, token }, 'Login successful');
     } catch (err) {
       next(err);
     }
@@ -63,16 +73,35 @@ class AuthController {
 
   async me(req, res, next) {
     try {
-      if (!req.session || !req.session.userId) {
+      let userId = req.session?.userId;
+
+      // Fallback: check JWT in Authorization header
+      if (!userId) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          try {
+            const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET);
+            userId = decoded.userId;
+          } catch {}
+        }
+      }
+
+      if (!userId) {
         return successResponse(res, { authenticated: false, user: null });
       }
 
-      const user = await authService.getUserById(req.session.userId);
+      const user = await authService.getUserById(userId);
       if (!user) {
         return successResponse(res, { authenticated: false, user: null });
       }
 
-      return successResponse(res, { authenticated: true, user });
+      // Sync session for cookie-based flow
+      if (!req.session?.userId) {
+        req.session.userId = userId;
+      }
+
+      const token = signToken(userId);
+      return successResponse(res, { authenticated: true, user: { ...user, token } });
     } catch (err) {
       next(err);
     }

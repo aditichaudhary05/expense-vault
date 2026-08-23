@@ -22,10 +22,22 @@ if (!process.env.SESSION_SECRET) {
   process.exit(1);
 }
 
+app.set('trust proxy', 1);
+
 app.use(helmet({ contentSecurityPolicy: false }));
 
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim());
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],

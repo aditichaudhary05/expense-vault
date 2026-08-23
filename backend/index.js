@@ -51,8 +51,13 @@ app.use(session({
   },
 }));
 
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'ExpenseVault API is running' });
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ success: true, message: 'ExpenseVault API is running', database: 'connected' });
+  } catch (err) {
+    res.json({ success: true, message: 'ExpenseVault API is running', database: 'disconnected' });
+  }
 });
 
 app.use('/api/auth', authRoutes);

@@ -97,11 +97,11 @@ const Header = ({ title = 'Welcome back', subtitle = "Here's your personal expen
         {/* Notifications Dropdown */}
         <div ref={dropdownRef} className="relative">
           <button
-            className="btn-secondary w-48 h-48 p-0 rounded-full relative"
+            className="btn-secondary w-56 h-56 p-0 rounded-full relative"
             onClick={() => setDropdownOpen(!dropdownOpen)}
             title="Notifications"
           >
-            <Bell size={22} />
+            <Bell size={26} />
             {unreadCount > 0 && (
               <span className="notification-badge">
                 {unreadCount > 9 ? '9+' : unreadCount}
